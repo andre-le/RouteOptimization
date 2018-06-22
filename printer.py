@@ -58,10 +58,12 @@ class ConsolePrinter():
             total_dist += route_dist
             plan_output += ' {node_index}\n'.format(
                 node_index=node_index)
-            plan_output += 'Distance of the route {0}: {dist}\n'.format(
+            plan_output += 'Distance of the route {0}: {dist}'.format(
                 vehicle_id,
                 dist=route_dist)
-            plan_output += 'Load of the route: {0}'.format(route_load)
+            if (route_dist > self.data.maximum_distance):
+                plan_output += "\t\tNOT SATISFY MAX DISTANCE"
+            plan_output += '\nLoad of the route: {0}'.format(route_load)
             if (route_load <  self.data.min_parcels):
                 plan_output += "\t\tNOT SATISFY MIN PARCELS\n"
             print(plan_output)

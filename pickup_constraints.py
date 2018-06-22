@@ -7,6 +7,7 @@ from ortools.constraint_solver import routing_enums_pb2
 import urllib.request
 import json
 
+import sys
 from geopy.distance import vincenty
 
 #######################
@@ -23,17 +24,40 @@ class CreateDistanceEvaluator(object): # pylint: disable=too-few-public-methods
         """Initializes the distance matrix."""
         self._distances = {}
         self._violated_points = []
+
         # complete distance matrix
         # precompute distance between location to have distance callback in O(1)
         if data.num_locations < 100:
+
+            #filter out violated points
             url = "https://bi.ahamove.com/osrm/table/v1/driving/"
             for loc in data.locations:
                 url += str(loc[1]) + "," + str(loc[0]) + ";"
             url = url[:-1] + "?annotations=distance"
             response = urllib.request.urlopen(url).read().decode('UTF-8')
-            contents = json.loads(response)
-            self._distances = contents["distances"]
+            contents = json.loads(response)["distances"]
+            for index in xrange(data.num_locations):
+                min_distance = contents[0][index] + contents[index][0]
+                if min_distance > data.maximum_distance:
+                    self._violated_points.append(data.locations[index])
+                    data.remove_location(index)
+
+            url = "https://bi.ahamove.com/osrm/table/v1/driving/"
+            for loc in data.locations:
+                url += str(loc[1]) + "," + str(loc[0]) + ";"
+            url = url[:-1] + "?annotations=distance"
+            response = urllib.request.urlopen(url).read().decode('UTF-8')
+            contents = json.loads(response)["distances"]
+
+            self._distances = contents
         else:
+            for index in xrange(data.num_locations):
+                min_distance = (vincenty_distance(data.locations[0], data.locations[index])) 
+                + (vincenty_distance(data.locations[index], data.locations[0]))
+                if min_distance > data.maximum_distance:
+                    self._violated_points.append(data.locations[index])
+                    data.remove_location(index)
+
             for from_node in xrange(data.num_locations):
                 self._distances[from_node] = {}
                 for to_node in xrange(data.num_locations):
@@ -46,6 +70,7 @@ class CreateDistanceEvaluator(object): # pylint: disable=too-few-public-methods
                                 data.locations[to_node]))
                         self._distances[from_node][to_node] = distance
 
+    @property
     def get_violated_points(self):
         return self._violated_points
 
@@ -72,6 +97,20 @@ def add_distance_dimension(routing, data, distance_evaluator):
         data.maximum_distance, # maximum distance per vehicle
         True, # start cumul to zero
         distance)
+
+def add_distance_soft(routing, data, distance_evaluator):
+    distance = "Distance"
+    routing.AddDimension(
+        distance_evaluator,
+        0, # null slack
+        sys.maxsize, # maximum distance per vehicle
+        True, # start cumul to zero
+        distance)
+
+    distance_dimension = routing.GetDimensionOrDie(distance)
+    # cost = 0 if cumul > min_parcels
+    for vehicle_id in xrange(data.num_vehicles):
+        distance_dimension.SetEndCumulVarSoftUpperBound(vehicle_id, data.maximum_distance, 100000000) 
 
 class CreateParcelsEvaluator(object):
     """Creates callback to get parcels at each location."""
