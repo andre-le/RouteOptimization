@@ -51,6 +51,7 @@ def handle(event, context):
     min_parcels = event["min_parcels"]
     maximum_distance = event["max_distance"]
     num_vehicles = event.get("vehicle_nums", math.ceil(maximum_distance/min_parcels))
+    min_vehicles = event.get("min_vehicles", False)
     data = data_problem.DataProblem(locations, num_vehicles, min_parcels, maximum_distance)
     
     # Define weight of each edge
@@ -75,6 +76,11 @@ def handle(event, context):
     search_parameters.time_limit_ms = 25000
     search_parameters.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
+
+    # minimize the total number of vehicle
+    if min_vehicles:
+        routing.SetFixedCostOfAllVehicles(1000000)
+
     # Solve the problem.
     assignment = routing.SolveWithParameters(search_parameters)
 
@@ -94,6 +100,8 @@ def handle(event, context):
         search_parameters.time_limit_ms = 10000
         search_parameters.first_solution_strategy = (
             routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
+        if min_vehicles:
+            routing.SetFixedCostOfAllVehicles(1000000)
         assignment = routing.SolveWithParameters(search_parameters)
 
     if assignment is None:

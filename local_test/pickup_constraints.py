@@ -36,6 +36,8 @@ class CreateDistanceEvaluator(object): # pylint: disable=too-few-public-methods
             url = url[:-1] + "?annotations=distance"
             response = urllib.request.urlopen(url).read().decode('UTF-8')
             contents = json.loads(response)["distances"]
+
+            #filter out violated distance
             for index in xrange(data.num_locations):
                 min_distance = contents[0][index] + contents[index][0]
                 if min_distance > data.maximum_distance:
