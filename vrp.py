@@ -27,28 +27,29 @@ def get_routing_assignment(data, routing, assignment, distance_matrix, violated_
     cluster = []
     violated_cluster = []
     for vehicle_id in xrange(data.num_vehicles):
-        index = routing.Start(vehicle_id)
-        if data.transport_mode == "N1":
-            index = assignment.Value(routing.NextVar(index))
-        route_dist = 0
-        route_load = 0
-        route = []
-        while not routing.IsEnd(index):
-            node_index = routing.IndexToNode(index)
-            next_node_index = routing.IndexToNode(
-                    assignment.Value(routing.NextVar(index)))
-            route_dist += distance_matrix[node_index][next_node_index]
-            route_load += data.parcels[node_index]            
-            route.append([data.locations[node_index][0], data.locations[node_index][1]])
-            index = assignment.Value(routing.NextVar(index))
+        if routing.IsVehicleUsed(assignment, vehicle_id):
+            index = routing.Start(vehicle_id)
+            if data.transport_mode == "N1":
+                index = assignment.Value(routing.NextVar(index))
+            route_dist = 0
+            route_load = 0
+            route = []
+            while not routing.IsEnd(index):
+                node_index = routing.IndexToNode(index)
+                next_node_index = routing.IndexToNode(
+                        assignment.Value(routing.NextVar(index)))
+                route_dist += distance_matrix[node_index][next_node_index]
+                route_load += data.parcels[node_index]            
+                route.append([data.locations[node_index][0], data.locations[node_index][1]])
+                index = assignment.Value(routing.NextVar(index))
 
-        if data.transport_mode != "1N1":
-            node_index = routing.IndexToNode(index)
-            route.append([data.locations[node_index][0], data.locations[node_index][1]])
-        if (data.maximum_distance != 0 and route_dist > data.maximum_distance) or (route_load < data.min_parcels):
-            violated_cluster.append(route)
-        else:
-            cluster.append(route)
+            if data.transport_mode != "1N1":
+                node_index = routing.IndexToNode(index)
+                route.append([data.locations[node_index][0], data.locations[node_index][1]])
+            if (data.maximum_distance != 0 and route_dist > data.maximum_distance) or (route_load < data.min_parcels):
+                violated_cluster.append(route)
+            else:
+                cluster.append(route)
     return {
         "cluster": cluster,
         "violated_points": violated_points,
