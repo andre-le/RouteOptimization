@@ -110,3 +110,26 @@ def add_distance_soft(routing, data, distance_evaluator):
     # cost = 0 if cumul > min_parcels
     for vehicle_id in xrange(data.num_vehicles):
         distance_dimension.SetEndCumulVarSoftUpperBound(vehicle_id, data.maximum_distance, 10000)
+
+class CreateCODEvaluator(object):
+    """Creates callback to get parcels at each location."""
+    def __init__(self, data):
+        """Initializes the parcels array."""
+        self._cod = data.locations
+
+    def cod_evaluator(self, from_node, to_node):
+        if from_node == 0:
+            return 0
+        elif from_node % 2 == 0:
+            return -self._cod[from_node][2]
+        else:
+            return self._cod[from_node][2]
+
+def add_cod_constraints(routing, data, cod_evaluator):
+    cod = "COD"
+    routing.AddDimension(
+        cod_evaluator,
+        0, # null capacity slack
+        data.max_cod, # vehicle maximum capacity
+        True, # start cumul to zero
+        cod)

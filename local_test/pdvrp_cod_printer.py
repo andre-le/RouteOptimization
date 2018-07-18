@@ -44,12 +44,17 @@ class ConsolePrinter():
             index = self.assignment.Value(self.routing.NextVar(index))
             plan_output = 'Route for vehicle {0}:\n'.format(vehicle_id)
             route_dist = 0
+            route_load = 0
             while not self.routing.IsEnd(index):
                 node_index = self.routing.IndexToNode(index)
                 next_node_index = self.routing.IndexToNode(
                     self.assignment.Value(self.routing.NextVar(index)))
                 route_dist += self.distance_matrix[node_index][next_node_index]
-                plan_output += ' {0} -> '.format(node_index)
+                if node_index != 0 and node_index % 2 == 0:
+                    route_load -= self.data.locations[node_index][2]
+                if node_index % 2 != 0:
+                    route_load += self.data.locations[node_index][2]
+                plan_output += ' {0} Load({1}) -> '.format(self.data.orders_index[node_index], route_load)
                 index = self.assignment.Value(self.routing.NextVar(index))
             node_index = self.routing.IndexToNode(index)
             total_dist += route_dist

@@ -11,9 +11,9 @@ import csv
 import random
 import json
 
-import pdvrp_constraints as constraints
-import pdvrp_data_problem as data_problem
-import pdvrp_printer as printer
+import pdvrp_cod_constraints as constraints
+import pdvrp_cod_data_problem as data_problem
+import pdvrp_cod_printer as printer
 
 def return_lambda_gateway_response(code, body):
     return {"statusCode": code, "body": json.dumps(body)}
@@ -48,9 +48,6 @@ def get_routing_assignment(data, routing, assignment, distance_matrix, result_mo
         "violated_cluster": violated_cluster 
     }
 
-########
-# Main #
-########
 def handle(event, context):
 
     start_time = time.time()
@@ -66,13 +63,14 @@ def handle(event, context):
         maximum_parcels = event.get("vehicle_capacity", 20)
         distance_calculation = event.get("distance_calculation", "VINCENTY")
         result_mode = event.get("result_mode", "ORDERS")
+        max_cod = event["max_cod"]
 
     except KeyError as e:
         print("Missing required input: " + str(e))
         cluster = {"title": "Missing required input: " + str(e)}
         return return_lambda_gateway_response(400, cluster)
 
-    if maximum_distance < 0 or num_vehicles <= 0 or maximum_parcels <= 0:
+    if maximum_distance < 0 or num_vehicles <= 0 or maximum_parcels <= 0 or max_cod <= 0:
         cluster = {"title": "Numerical input must be positive"}
         return return_lambda_gateway_response(400, cluster)
 
@@ -85,7 +83,7 @@ def handle(event, context):
         return return_lambda_gateway_response(400, cluster)
 
     # Instantiate the data problem.
-    data = data_problem.DataProblem(num_vehicles, depot, orders, maximum_distance, maximum_parcels, distance_calculation)
+    data = data_problem.DataProblem(num_vehicles, depot, orders, maximum_distance, maximum_parcels, distance_calculation, max_cod)
 
     if distance_calculation == "OSRM" and data.num_locations > 100:
         cluster = {"title": "Error: OSRM reach the limit number of points. Please switch to Vincenty"}
@@ -105,6 +103,8 @@ def handle(event, context):
         routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator)
     constraints.add_pickup_delivery(routing, data)
     constraints.add_parcels_dimension(routing, data, parcels_evaluator)
+    cod_evaluator = constraints.CreateCODEvaluator(data).cod_evaluator
+    constraints.add_cod_constraints(routing, data, cod_evaluator)
     if maximum_distance != 0:
         constraints.add_distance_soft(routing, data, distance_evaluator)
     # Setting first solution heuristic (cheapest addition).

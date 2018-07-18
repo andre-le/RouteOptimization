@@ -11,8 +11,8 @@ import json
 #time for tester
 import time
 
-import data_problem
-import printer
+import vrp_data_problem as data_problem
+import vrp_printer as printer
 import vrp_constraints
 
 def return_lambda_gateway_response(code, body):

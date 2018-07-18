@@ -15,6 +15,28 @@ import pdvrp_constraints as constraints
 import pdvrp_data_problem as data_problem
 import pdvrp_printer as printer
 
+###########################
+# Problem Data Definition #
+###########################
+test_20 = {
+    "depot": [[10.8068996,106.6893251]],
+    "orders": [
+                [[10.7689049, 106.6637698], [10.8083274, 106.7291283], [10.7783352, 106.6116854]], 
+                [[10.7748099, 106.700699], [10.7634317, 106.6377053]],
+                [[10.7719892, 106.7022025], [10.8043369, 106.708527]], 
+                [[10.8021978, 106.672429], [10.8308345, 106.6438679]], 
+                [[10.7831447, 106.702722], [10.7502831, 106.6483749]],
+                [[10.8346252, 106.6743355], [10.8368623, 106.7380292]], 
+                [[10.8617355, 106.8001524], [10.7674223, 106.6907763]], 
+                [[10.7569914, 106.6788142], [10.7472182, 106.6243638]],
+                [[10.7772832, 106.6951255], [10.7864613, 106.687713], [10.8007547, 106.650517]]
+            ],
+    "vehicle_num": 2,
+    "vehicle_capacity": 20,
+    "max_distance": 90000,
+    "distance_calculation": "VINCENTY"
+}
+
 def return_lambda_gateway_response(code, body):
     return {"statusCode": code, "body": json.dumps(body)}
 
@@ -56,8 +78,8 @@ def handle(event, context):
     start_time = time.time()
 
     try:
-        body = event.get('body')
-        event = json.loads(body)
+        #body = event.get('body')
+        #event = json.loads(body)
 
         depot = event["depot"]
         num_vehicles = event["vehicle_num"]
@@ -127,3 +149,10 @@ def handle(event, context):
     print("\nThe program took " + str(time.time() - start_time) + " seconds to run")
 
     return return_lambda_gateway_response(200, result)
+
+def main():
+    event = test_20
+    print(handle(event, ""))
+
+if __name__ == '__main__':
+  main()

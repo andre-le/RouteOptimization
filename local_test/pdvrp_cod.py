@@ -11,9 +11,32 @@ import csv
 import random
 import json
 
-import pdvrp_constraints as constraints
-import pdvrp_data_problem as data_problem
-import pdvrp_printer as printer
+import pdvrp_cod_constraints as constraints
+import pdvrp_cod_data_problem as data_problem
+import pdvrp_cod_printer as printer
+
+###########################
+# Problem Data Definition #
+###########################
+test_20 = {
+    "depot": [[10.8068996,106.6893251]],
+    "orders": [
+                [[10.7689049, 106.6637698,0], [10.8083274, 106.7291283, 400], [10.7783352, 106.6116854, 200]], 
+                [[10.7748099, 106.700699], [10.7634317, 106.6377053, 700]],
+                [[10.7719892, 106.7022025], [10.8043369, 106.708527, 1000]], 
+                [[10.8021978, 106.672429], [10.8308345, 106.6438679, 500]], 
+                [[10.7831447, 106.702722], [10.7502831, 106.6483749, 250]],
+                [[10.8346252, 106.6743355], [10.8368623, 106.7380292, 400]], 
+                [[10.8617355, 106.8001524], [10.7674223, 106.6907763, 300]], 
+                [[10.7569914, 106.6788142], [10.7472182, 106.6243638, 600]],
+                [[10.7772832, 106.6951255], [10.7864613, 106.687713, 550], [10.8007547, 106.650517, 250]]
+            ],
+    "vehicle_num": 2,
+    "vehicle_capacity": 20,
+    "max_distance": 90000,
+    "distance_calculation": "VINCENTY",
+    "max_cod": 1000
+}
 
 def return_lambda_gateway_response(code, body):
     return {"statusCode": code, "body": json.dumps(body)}
@@ -56,8 +79,8 @@ def handle(event, context):
     start_time = time.time()
 
     try:
-        body = event.get('body')
-        event = json.loads(body)
+        #body = event.get('body')
+        #event = json.loads(body)
 
         depot = event["depot"]
         num_vehicles = event["vehicle_num"]
@@ -66,13 +89,14 @@ def handle(event, context):
         maximum_parcels = event.get("vehicle_capacity", 20)
         distance_calculation = event.get("distance_calculation", "VINCENTY")
         result_mode = event.get("result_mode", "ORDERS")
+        max_cod = event["max_cod"]
 
     except KeyError as e:
         print("Missing required input: " + str(e))
         cluster = {"title": "Missing required input: " + str(e)}
         return return_lambda_gateway_response(400, cluster)
 
-    if maximum_distance < 0 or num_vehicles <= 0 or maximum_parcels <= 0:
+    if maximum_distance < 0 or num_vehicles <= 0 or maximum_parcels <= 0 or max_cod <= 0:
         cluster = {"title": "Numerical input must be positive"}
         return return_lambda_gateway_response(400, cluster)
 
@@ -85,7 +109,7 @@ def handle(event, context):
         return return_lambda_gateway_response(400, cluster)
 
     # Instantiate the data problem.
-    data = data_problem.DataProblem(num_vehicles, depot, orders, maximum_distance, maximum_parcels, distance_calculation)
+    data = data_problem.DataProblem(num_vehicles, depot, orders, maximum_distance, maximum_parcels, distance_calculation, max_cod)
 
     if distance_calculation == "OSRM" and data.num_locations > 100:
         cluster = {"title": "Error: OSRM reach the limit number of points. Please switch to Vincenty"}
@@ -105,6 +129,8 @@ def handle(event, context):
         routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator)
     constraints.add_pickup_delivery(routing, data)
     constraints.add_parcels_dimension(routing, data, parcels_evaluator)
+    cod_evaluator = constraints.CreateCODEvaluator(data).cod_evaluator
+    constraints.add_cod_constraints(routing, data, cod_evaluator)
     if maximum_distance != 0:
         constraints.add_distance_soft(routing, data, distance_evaluator)
     # Setting first solution heuristic (cheapest addition).
@@ -127,3 +153,10 @@ def handle(event, context):
     print("\nThe program took " + str(time.time() - start_time) + " seconds to run")
 
     return return_lambda_gateway_response(200, result)
+
+def main():
+    event = test_20
+    print(handle(event, ""))
+
+if __name__ == '__main__':
+  main()
